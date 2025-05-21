@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice PDF Processor</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #4361ee;
+            --primary-dark: #3a0ca3;
+            --secondary: #4cc9f0;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --success: #2dc653;
+            --danger: #e63946;
+            --gray: #6c757d;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            background-color: #f0f2f5;
+            color: var(--dark);
+            overflow-x: hidden;
+        }
+        
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            text-align: center;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            transform: translateY(0);
+            animation: fadeInDown 0.8s ease;
+        }
+        
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        h1 {
+            margin: 0;
+            font-size: 2.2rem;
+        }
+        
+        header p {
+            opacity: 0.9;
+            margin-top: 0.5rem;
+        }
+        
+        .card {
+            background-color: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: var(--shadow);
+            margin-bottom: 2rem;
+            transition: var(--transition);
+            transform: translateY(0);
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .upload-form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 1.5rem;
+            width: 100%;
+            text-align: center;
+        }
+        
+        .file-input {
+            border: 2px dashed #d1d6e6;
+            padding: 3.5rem 2rem;
+            text-align: center;
+            width: 100%;
+            border-radius: 12px;
+            cursor: pointer;
+            box-sizing: border-box;
+            transition: var(--transition);
+            background-color: #f8f9fa;
+        }
+        
+        .file-input:hover {
+            border-color: var(--primary);
+            background-color: rgba(67, 97, 238, 0.05);
+        }
+        
+        .file-input i {
+            font-size: 3rem;
+            color: var(--gray);
+            margin-bottom: 1rem;
+            transition: var(--transition);
+        }
+        
+        .file-input:hover i {
+            color: var(--primary);
+            transform: translateY(-5px);
+        }
+        
+        #file-upload {
+            display: none;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-width: 180px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn:disabled {
+            background: linear-gradient(135deg, #bdc3c7, #95a5a6);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+            display: none;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .invoice-details {
+            margin-top: 1.5rem;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.6s ease forwards;
+        }
+        
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .invoice-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .invoice-field {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+            border-left: 4px solid var(--primary);
+            transition: var(--transition);
+        }
+        
+        .invoice-field:hover {
+            transform: translateX(5px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+        
+        .invoice-field h4 {
+            margin: 0 0 0.5rem 0;
+            color: var(--gray);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .invoice-field p {
+            margin: 0;
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: var(--dark);
+        }
+        
+        .section-title {
+            position: relative;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+            color: var(--dark);
+        }
+        
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            border-radius: 3px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+        }
+        
+        table th, table td {
+            padding: 12px 18px;
+            text-align: left;
+        }
+        
+        table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        table th {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            font-weight: 500;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+        }
+        
+        .query-section {
+            margin-top: 2.5rem;
+            padding-top: 2rem;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .query-form {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .query-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: var(--transition);
+        }
+        
+        .query-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
+        }
+        
+        .query-response {
+            background-color: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary);
+            margin-top: 1.5rem;
+            white-space: pre-wrap;
+            position: relative;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.6s ease forwards;
+        }
+        
+        .error-message {
+            color: var(--danger);
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 8px;
+            background-color: rgba(230, 57, 70, 0.1);
+            border-left: 4px solid var(--danger);
+            display: none;
+            animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+        }
+        
+        @keyframes shake {
+            10%, 90% { transform: translateX(-1px); }
+            20%, 80% { transform: translateX(2px); }
+            30%, 50%, 70% { transform: translateX(-4px); }
+            40%, 60% { transform: translateX(4px); }
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+        
+        .badge-success {
+            background-color: rgba(45, 198, 83, 0.15);
+            color: var(--success);
+        }
+        
+        /* Progress indicator */
+        .progress-tracker {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+        
+        .progress-tracker::before {
+            content: '';
+            position: absolute;
+            top: 15px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: #e9ecef;
+            z-index: 1;
+        }
+        
+        .progress-step {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+        }
+        
+        .step-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: #e9ecef;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            margin-bottom: 0.5rem;
+            transition: var(--transition);
+        }
+        
+        .step-text {
+            font-size: 0.9rem;
+            color: var(--gray);
+            text-align: center;
+            transition: var(--transition);
+        }
+        
+        .progress-step.active .step-icon {
+            background-color: var(--primary);
+            transform: scale(1.2);
+        }
+        
+        .progress-step.active .step-text {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .progress-step.completed .step-icon {
+            background-color: var(--success);
+        }
+        
+        /* Animations */
+        .slide-in-right {
+            animation: slideInRight 0.5s ease forwards;
+        }
+        
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .bounce {
+            animation: bounce 1s ease infinite;
+        }
+        
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+            .query-form {
+                flex-direction: column;
+            }
+            
+            .invoice-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-file-invoice-dollar"></i> Invoice PDF Processor</h1>
+            <p>Upload and analyze invoice data in seconds</p>
+        </header>
+        
+        <div class="progress-tracker" id="progress-tracker">
+            <div class="progress-step active" id="step-upload">
+                <div class="step-icon">1</div>
+                <div class="step-text">Upload</div>
+            </div>
+            <div class="progress-step" id="step-process">
+                <div class="step-icon">2</div>
+                <div class="step-text">Process</div>
+            </div>
+            <div class="progress-step" id="step-analyze">
+                <div class="step-icon">3</div>
+                <div class="step-text">Analyze</div>
+            </div>
+        </div>
+        
+        <div class="card" id="upload-card">
+            <div class="upload-form">
+                <div class="file-input-wrapper">
+                    <div class="file-input" id="file-drop-area">
+                        <i class="fas fa-cloud-upload-alt pulse"></i>
+                        <p>Drag & drop your invoice PDF here or click to browse</p>
+                        <p><small>Supports PDF files only</small></p>
+                        <input type="file" id="file-upload" accept=".pdf">
+                    </div>
+                </div>
+                <button class="btn" id="upload-button" disabled>
+                    <i class="fas fa-cog"></i> Process Invoice
+                    <span class="spinner" id="upload-spinner"></span>
+                </button>
+            </div>
+            <div class="error-message" id="error-message"></div>
+        </div>
+        
+        <div class="card" id="result-container" style="display: none;">
+            <h2 class="section-title">Invoice Details <span class="badge badge-success" id="success-badge">Processed</span></h2>
+            
+            <div class="invoice-details" id="invoice-details" style="white-space: pre-wrap; word-wrap: break-word; text-wrap: wrap;">
+                <!-- Details will be filled in by JavaScript -->
+            </div>
+            
+            <div class="query-section">
+                <h3 class="section-title">Ask about this invoice</h3>
+                <div class="query-form">
+                    <input type="text" class="query-input" id="query-input" placeholder="E.g., What is the total amount?">
+                    <button class="btn" id="query-button">
+                        <i class="fas fa-search"></i> Ask
+                        <span class="spinner" id="query-spinner"></span>
+                    </button>
+                </div>
+                <div class="query-response" id="query-response" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // DOM elements
+        const fileUpload = document.getElementById('file-upload');
+        const fileDropArea = document.getElementById('file-drop-area');
+        const uploadButton = document.getElementById('upload-button');
+        const uploadSpinner = document.getElementById('upload-spinner');
+        const resultContainer = document.getElementById('result-container');
+        const invoiceDetails = document.getElementById('invoice-details');
+        const errorMessage = document.getElementById('error-message');
+        const queryInput = document.getElementById('query-input');
+        const queryButton = document.getElementById('query-button');
+        const querySpinner = document.getElementById('query-spinner');
+        const queryResponse = document.getElementById('query-response');
+        const progressTracker = document.getElementById('progress-tracker');
+        const stepUpload = document.getElementById('step-upload');
+        const stepProcess = document.getElementById('step-process');
+        const stepAnalyze = document.getElementById('step-analyze');
+        
+        // Store the current filename
+        let currentFilename = '';
+        
+        // Initialize file input
+        fileDropArea.addEventListener('click', () => {
+            fileUpload.click();
+        });
+        
+        fileUpload.addEventListener('change', handleFileSelect);
+        
+        // Drag and drop functionality
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            fileDropArea.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            fileDropArea.addEventListener(eventName, highlight, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            fileDropArea.addEventListener(eventName, unhighlight, false);
+        });
+        
+        function highlight() {
+            fileDropArea.classList.add('pulse');
+            fileDropArea.style.borderColor = '#4361ee';
+            fileDropArea.style.backgroundColor = 'rgba(67, 97, 238, 0.05)';
+        }
+        
+        function unhighlight() {
+            fileDropArea.classList.remove('pulse');
+            fileDropArea.style.borderColor = '#d1d6e6';
+            fileDropArea.style.backgroundColor = '#f8f9fa';
+        }
+        
+        fileDropArea.addEventListener('drop', handleDrop, false);
+        
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            
+            if (files.length > 0) {
+                fileUpload.files = files;
+                handleFileSelect();
+            }
+        }
+        
+        function handleFileSelect() {
+            const files = fileUpload.files;
+            
+            if (files.length > 0) {
+                const file = files[0];
+                
+                // Check if it's a PDF
+                if (file.type !== 'application/pdf') {
+                    showError('Please upload a PDF file.');
+                    return;
+                }
+                
+                // Update UI
+                fileDropArea.innerHTML = `
+                    <i class="fas fa-file-pdf" style="font-size: 3rem; color: #4361ee;"></i>
+                    <p>Selected file: <b>${file.name}</b></p>
+                    <p><small>Click "Process Invoice" to continue</small></p>
+                `;
+                uploadButton.disabled = false;
+                uploadButton.classList.add('bounce');
+                setTimeout(() => uploadButton.classList.remove('bounce'), 1000);
+                hideError();
+            }
+        }
+        
+        // Handle upload
+        uploadButton.addEventListener('click', uploadFile);
+        
+        function uploadFile() {
+            const fileToUpload = fileUpload.files[0];
+            if (!fileToUpload) return;
+            
+            // Create form data
+            const formData = new FormData();
+            formData.append('file', fileToUpload);
+            
+            // Show spinner, disable button
+            uploadSpinner.style.display = 'inline-block';
+            uploadButton.disabled = true;
+            uploadButton.innerHTML = '<span class="spinner" id="upload-spinner" style="display: inline-block;"></span> Processing...';
+            hideError();
+            
+            // Update progress tracker
+            stepUpload.classList.add('completed');
+            stepProcess.classList.add('active');
+            
+            // Upload file - Keeping the original API call
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Hide spinner
+                uploadSpinner.style.display = 'none';
+                uploadButton.innerHTML = '<i class="fas fa-check"></i> Processed';
+                
+                if (data.error) {
+                    showError(data.error);
+                    uploadButton.disabled = false;
+                    return;
+                }
+                
+                // Store filename for future queries
+                currentFilename = data.filename;
+                
+                // Update progress tracker
+                stepProcess.classList.add('completed');
+                stepAnalyze.classList.add('active');
+                
+                // Display results with animation
+                setTimeout(() => {
+                    displayInvoiceData(data.invoice_data);
+                    resultContainer.style.display = 'block';
+                    resultContainer.classList.add('slide-in-right');
+                    
+                    // Scroll to results
+                    resultContainer.scrollIntoView({ behavior: 'smooth' });
+                }, 500);
+            })
+            .catch(error => {
+                uploadSpinner.style.display = 'none';
+                uploadButton.disabled = false;
+                uploadButton.innerHTML = '<i class="fas fa-cog"></i> Process Invoice';
+                stepProcess.classList.remove('active');
+                showError('An error occurred during upload. Please try again.');
+                console.error('Error:', error);
+            });
+        }
+        
+        function displayInvoiceData(invoiceData) {
+            try {
+                // Try to parse if it's a string
+                if (typeof invoiceData === 'string') {
+                    invoiceData = JSON.parse(invoiceData);
+                }
+                
+                // Create HTML content
+                let html = '<div class="invoice-grid">';
+                
+                // Basic invoice details
+                const basicFields = [
+                    { key: 'invoice_number', label: 'Invoice Number', icon: 'hashtag' },
+                    { key: 'invoice_date', label: 'Invoice Date', icon: 'calendar-alt' },
+                    { key: 'due_date', label: 'Due Date', icon: 'calendar-check' },
+                    { key: 'vendor_name', label: 'Vendor', icon: 'building' },
+                    { key: 'customer_name', label: 'Customer', icon: 'user' },
+                    { key: 'total_amount', label: 'Total Amount', icon: 'dollar-sign' },
+                    { key: 'tax_amount', label: 'Tax Amount', icon: 'percentage' }
+                ];
+                
+                basicFields.forEach(field => {
+                    const value = invoiceData[field.key] || 'N/A';
+                    html += `
+                        <div class="invoice-field">
+                            <h4><i class="fas fa-${field.icon}"></i> ${field.label}</h4>
+                            <p>${value}</p>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                
+                // Address information
+                if (invoiceData.vendor_address || invoiceData.customer_address) {
+                    html += '<div class="invoice-grid">';
+                    
+                    if (invoiceData.vendor_address) {
+                        html += `
+                            <div class="invoice-field">
+                                <h4><i class="fas fa-map-marker-alt"></i> Vendor Address</h4>
+                                <p>${invoiceData.vendor_address}</p>
+                            </div>
+                        `;
+                    }
+                    
+                    if (invoiceData.customer_address) {
+                        html += `
+                            <div class="invoice-field">
+                                <h4><i class="fas fa-map-marker-alt"></i> Customer Address</h4>
+                                <p>${invoiceData.customer_address}</p>
+                            </div>
+                        `;
+                    }
+                    
+                    html += '</div>';
+                }
+                
+                // Line items
+                if (invoiceData.items && Array.isArray(invoiceData.items) && invoiceData.items.length > 0) {
+                    html += `
+                        <h3 class="section-title">Line Items</h3>
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Description</th>
+                                        <th>Quantity</th>
+                                        <th>Unit Price</th>
+                                        <th>Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    `;
+                    
+                    invoiceData.items.forEach(item => {
+                        html += `
+                            <tr>
+                                <td>${item.description || 'N/A'}</td>
+                                <td>${item.quantity || 'N/A'}</td>
+                                <td>${item.unit_price || 'N/A'}</td>
+                                <td>${item.amount || 'N/A'}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                }
+                
+                // If there's more information that doesn't fit the standard fields
+                if (typeof invoiceData === 'string') {
+                    html += `
+                        <div class="additional-info">
+                            <h3 class="section-title">Additional Information</h3>
+                           <pre style="white-space: pre-wrap; word-wrap: break-word; text-wrap: wrap;">${invoiceData}</pre>
+
+                        </div>
+                    `;
+                }
+                
+                invoiceDetails.innerHTML = html;
+                
+                // Focus on query input for better UX
+                setTimeout(() => {
+                    queryInput.focus();
+                }, 800);
+                
+            } catch (error) {
+                console.error('Error parsing invoice data:', error);
+                // If JSON parsing fails, just display as text
+                invoiceDetails.innerHTML = `<pre style="text-wrap: wrap;">${invoiceData}</pre>`;
+            }
+        }
+        
+        // Handle queries
+        queryButton.addEventListener('click', submitQuery);
+        
+        function submitQuery() {
+            const query = queryInput.value.trim();
+            
+            if (!query) {
+                showError('Please enter a query.');
+                queryInput.focus();
+                return;
+            }
+            
+            if (!currentFilename) {
+                showError('No invoice available. Please upload an invoice first.');
+                return;
+            }
+            
+            // Show spinner, disable button
+            querySpinner.style.display = 'inline-block';
+            queryButton.disabled = true;
+            queryButton.innerHTML = '<span class="spinner" id="query-spinner" style="display: inline-block;"></span> Processing...';
+            queryResponse.style.display = 'none';
+            hideError();
+            
+            // Submit query - Keeping the original API call
+            fetch('/query', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    filename: currentFilename,
+                    query: query
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Hide spinner
+                querySpinner.style.display = 'none';
+                queryButton.disabled = false;
+                queryButton.innerHTML = '<i class="fas fa-search"></i> Ask';
+                
+                if (data.error) {
+                    showError(data.error);
+                    return;
+                }
+                
+                // Display response with animation
+                queryResponse.textContent = data.response;
+                queryResponse.style.display = 'block';
+                
+                // Scroll to response
+                queryResponse.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            })
+            .catch(error => {
+                querySpinner.style.display = 'none';
+                queryButton.disabled = false;
+                queryButton.innerHTML = '<i class="fas fa-search"></i> Ask';
+                showError('An error occurred. Please try again.');
+                console.error('Error:', error);
+            });
+        }
+        
+        // Enter key for query
+        queryInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                submitQuery();
+            }
+        });
+        
+        // Helper functions
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            
+            // Auto hide error after 5 seconds
+            setTimeout(() => {
+                hideError();
+            }, 5000);
+        }
+        
+        function hideError() {
+            errorMessage.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
